@@ -3,24 +3,37 @@ name: Build Android APK
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
+    branches:
+      - main
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
-      - name: Checkout
+      - name: Checkout project
         uses: actions/checkout@v5
 
-      - name: Build APK with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        with:
-          workdir: .
-          buildozer_version: stable
+      - name: Pull official Buildozer image
+        run: docker pull ghcr.io/kivy/buildozer:latest
+
+      - name: Build debug APK
+        run: |
+          docker run --rm \
+            --volume "${{ github.workspace }}:/home/user/hostcwd" \
+            ghcr.io/kivy/buildozer:latest \
+            android debug
+
+      - name: Show generated files
+        if: always()
+        run: |
+          echo "Files in bin/:"
+          find bin -maxdepth 2 -type f -print 2>/dev/null || true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: CANRI-Android-Launcher-APK
           path: bin/*.apk
+          if-no-files-found: error
